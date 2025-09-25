@@ -54,6 +54,7 @@
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             overflow: hidden;
+            position: relative;
         }
         
         header {
@@ -308,10 +309,91 @@
             background: #3498db;
             color: white;
         }
+        
+        /* Стили для кнопки админа */
+        .admin-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f39c12;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .admin-btn:hover {
+            background: #e67e22;
+            transform: scale(1.1);
+        }
+        
+        /* Стили для модального окна админа */
+        .admin-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .admin-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .admin-modal h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .admin-modal input {
+            margin-bottom: 15px;
+        }
+        
+        .admin-modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .admin-modal-buttons button {
+            flex: 1;
+        }
+        
+        .admin-controls {
+            display: none;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .admin-active .control-group {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="main-container">
+        <button class="admin-btn" onclick="showAdminModal()">⚙️</button>
+        
         <header>
             <h1>🏆 Турнирная таблица - Мини-бильярд</h1>
             <p>Система подсчета очков: Победа = 2 очка, Поражение = 1 очко</p>
@@ -405,9 +487,23 @@
                     </div>
                 </div>
                 
-                <div style="margin-top: 15px;">
+                <div id="admin-controls" class="admin-controls">
+                    <h3>🔧 Административные функции</h3>
                     <button class="danger" onclick="resetData()">🔄 Сбросить все данные</button>
+                    <button class="secondary" onclick="logoutAdmin()">🚪 Выйти из режима админа</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для ввода пароля админа -->
+    <div id="admin-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <h2>🔐 Доступ администратора</h2>
+            <input type="password" id="admin-password" placeholder="Введите пароль">
+            <div class="admin-modal-buttons">
+                <button onclick="checkAdminPassword()">Войти</button>
+                <button class="secondary" onclick="hideAdminModal()">Отмена</button>
             </div>
         </div>
     </div>
@@ -430,6 +526,45 @@
         let currentSearch = '';
         let currentSort = { field: 'points', direction: 'desc' };
         let selectedPlayerId = null;
+        let isAdmin = false;
+        const ADMIN_PASSWORD = "admin123";
+
+        // Функции для админ-доступа
+        function showAdminModal() {
+            document.getElementById('admin-modal').style.display = 'flex';
+            document.getElementById('admin-password').focus();
+        }
+
+        function hideAdminModal() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('admin-password').value = '';
+        }
+
+        function checkAdminPassword() {
+            const password = document.getElementById('admin-password').value;
+            if (password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                activateAdminMode();
+                hideAdminModal();
+                showNotification('Режим администратора активирован');
+            } else {
+                alert('Неверный пароль!');
+                document.getElementById('admin-password').value = '';
+                document.getElementById('admin-password').focus();
+            }
+        }
+
+        function activateAdminMode() {
+            document.getElementById('admin-controls').style.display = 'block';
+            document.getElementById('main-container').classList.add('admin-active');
+        }
+
+        function logoutAdmin() {
+            isAdmin = false;
+            document.getElementById('admin-controls').style.display = 'none';
+            document.getElementById('main-container').classList.remove('admin-active');
+            showNotification('Режим администратора деактивирован');
+        }
 
         // Функция для отображения статуса синхронизации
         function showSyncStatus(message, isError = false) {
@@ -540,6 +675,11 @@
 
         // Сброс данных к начальным
         function resetData() {
+            if (!isAdmin) {
+                alert('Доступно только администратору');
+                return;
+            }
+            
             if (confirm('Вы уверены, что хотите сбросить все данные? Все текущие результаты будут удалены.')) {
                 players = initialPlayers.map((name, index) => ({
                     id: index + 1,
@@ -870,6 +1010,13 @@
         document.getElementById('search-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 filterPlayers();
+            }
+        });
+
+        // Обработка нажатия Enter в поле пароля админа
+        document.getElementById('admin-password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAdminPassword();
             }
         });
 
