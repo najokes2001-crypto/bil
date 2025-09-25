@@ -26,7 +26,7 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         
-        // Сделаем database глобальной переменной для использования в других функциях
+        // Сделаем database глобальной переменной для использования в других функциян
         window.database = database;
         window.dbRef = ref;
         window.dbOnValue = onValue;
@@ -126,14 +126,8 @@
             padding: 20px;
             background: #ecf0f1;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr;
-            }
         }
         
         .control-group {
@@ -283,33 +277,6 @@
             flex: 1;
         }
         
-        .player-list {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        
-        .player-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        
-        .player-item:hover {
-            background: #f0f0f0;
-        }
-        
-        .player-item:last-child {
-            border-bottom: none;
-        }
-        
-        .player-item.selected {
-            background: #3498db;
-            color: white;
-        }
-        
         /* Стили для кнопки админа */
         .admin-btn {
             position: absolute;
@@ -325,6 +292,7 @@
             cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             transition: all 0.3s;
+            z-index: 100;
         }
         
         .admin-btn:hover {
@@ -377,16 +345,29 @@
         
         .admin-controls {
             display: none;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 15px;
-            margin-top: 15px;
         }
         
-        .admin-active .control-group {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
+        .admin-active .admin-controls {
+            display: block;
+        }
+        
+        .admin-locked {
+            display: none;
+        }
+        
+        .admin-active .admin-locked {
+            display: block;
+        }
+        
+        .admin-active .admin-unlocked {
+            display: none;
+        }
+        
+        .admin-message {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-style: italic;
         }
     </style>
 </head>
@@ -438,6 +419,7 @@
         </div>
         
         <div class="controls">
+            <!-- Блок регистрации матча - всегда виден -->
             <div class="control-group">
                 <h3>🎯 Зарегистрировать матч</h3>
                 <select id="player1">
@@ -454,43 +436,56 @@
                 <button onclick="registerMatch()">✅ Зарегистрировать матч</button>
             </div>
             
-            <div class="control-group">
-                <h3>✏️ Исправление данных</h3>
-                <select id="edit-player" onchange="showEditForm()">
-                    <option value="">Выберите игрока для редактирования</option>
-                </select>
+            <!-- Блок исправления данных - скрыт под паролем -->
+            <div class="control-group admin-controls">
+                <h3>🔧 Функции администратора</h3>
                 
-                <div id="edit-form" class="edit-form">
-                    <div class="form-row">
-                        <div>
-                            <label>Игры:</label>
-                            <input type="number" id="edit-games" min="0">
+                <div class="admin-unlocked">
+                    <h4>✏️ Исправление данных игрока</h4>
+                    <select id="edit-player" onchange="showEditForm()">
+                        <option value="">Выберите игрока для редактирования</option>
+                    </select>
+                    
+                    <div id="edit-form" class="edit-form">
+                        <div class="form-row">
+                            <div>
+                                <label>Игры:</label>
+                                <input type="number" id="edit-games" min="0">
+                            </div>
+                            <div>
+                                <label>Победы:</label>
+                                <input type="number" id="edit-wins" min="0">
+                            </div>
                         </div>
-                        <div>
-                            <label>Победы:</label>
-                            <input type="number" id="edit-wins" min="0">
+                        <div class="form-row">
+                            <div>
+                                <label>Поражения:</label>
+                                <input type="number" id="edit-losses" min="0">
+                            </div>
+                            <div>
+                                <label>Очки:</label>
+                                <input type="number" id="edit-points" min="0">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button onclick="savePlayerEdit()">💾 Сохранить</button>
+                            <button class="secondary" onclick="cancelEdit()">❌ Отмена</button>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div>
-                            <label>Поражения:</label>
-                            <input type="number" id="edit-losses" min="0">
-                        </div>
-                        <div>
-                            <label>Очки:</label>
-                            <input type="number" id="edit-points" min="0">
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button onclick="savePlayerEdit()">💾 Сохранить</button>
-                        <button class="secondary" onclick="cancelEdit()">❌ Отмена</button>
+                    
+                    <div style="margin-top: 15px;">
+                        <button class="danger" onclick="resetData()">🔄 Сбросить все данные</button>
+                        <button class="secondary" onclick="logoutAdmin()">🚪 Выйти из режима админа</button>
                     </div>
                 </div>
-                
-                <div id="admin-controls" class="admin-controls">
-                    <h3>🔧 Административные функции</h3>
-                    <button class="danger" onclick="resetData()">🔄 Сбросить все данные</button>
-                    <button class="secondary" onclick="logoutAdmin()">🚪 Выйти из режима админа</button>
+            </div>
+            
+            <!-- Сообщение когда функции админа заблокированы -->
+            <div class="control-group admin-locked">
+                <div class="admin-message">
+                    <h3>🔒 Функции корректировки заблокированы</h3>
+                    <p>Для доступа к функциям исправления данных необходимы права администратора</p>
+                    <button onclick="showAdminModal()">🔑 Войти как администратор</button>
                 </div>
             </div>
         </div>
@@ -520,7 +515,7 @@
             "Рогова Лилия", "Рогова Наталья", "Романова Антонина", "Славнова Любовь",
             "Соколов Дмитрий", "Соколова Алена", "Сорокина Анастасия", "Уткин Дмитрий",
             "Уткина Мария", "Ускова Анна", "Фёдоров Илья", "Шигаева Анастасия"
-        ].sort(); // Сортируем по алфавиту
+        ].sort();
 
         let players = [];
         let currentSearch = '';
@@ -555,14 +550,14 @@
         }
 
         function activateAdminMode() {
-            document.getElementById('admin-controls').style.display = 'block';
             document.getElementById('main-container').classList.add('admin-active');
+            updatePlayerSelects(); // Обновляем списки игроков для редактирования
         }
 
         function logoutAdmin() {
             isAdmin = false;
-            document.getElementById('admin-controls').style.display = 'none';
             document.getElementById('main-container').classList.remove('admin-active');
+            cancelEdit(); // Сбрасываем форму редактирования
             showNotification('Режим администратора деактивирован');
         }
 
@@ -578,7 +573,6 @@
                 statusElement.classList.remove('error');
             }
             
-            // Автоматически скрыть через 3 секунды, если это не ошибка
             if (!isError) {
                 setTimeout(() => {
                     statusElement.style.display = 'none';
@@ -594,13 +588,10 @@
                 const data = snapshot.val();
                 
                 if (data) {
-                    // Преобразуем объект в массив
                     players = Object.values(data);
-                    // Восстанавливаем порядок по ID
                     players.sort((a, b) => a.id - b.id);
                     showSyncStatus('✅ Данные загружены из облака');
                 } else {
-                    // Инициализация предзаполненными участниками, если данных нет в Firebase
                     players = initialPlayers.map((name, index) => ({
                         id: index + 1,
                         name: name,
@@ -623,7 +614,6 @@
 
         // Сохранение данных в Firebase
         function saveDataToFirebase() {
-            // Преобразуем массив в объект с ключами по ID для Firebase
             const playersObject = {};
             players.forEach(player => {
                 playersObject[player.id] = player;
@@ -644,29 +634,23 @@
 
         // Сортировка таблицы
         function sortTable(field) {
-            // Если поле уже отсортировано, меняем направление
             if (currentSort.field === field) {
                 currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSort.field = field;
-                currentSort.direction = 'asc'; // По умолчанию сортируем по возрастанию
+                currentSort.direction = 'asc';
             }
             
-            // Обновляем индикаторы сортировки
             updateSortIndicators();
-            
-            // Обновляем таблицу
             updateTable();
         }
 
         // Обновление индикаторов сортировки
         function updateSortIndicators() {
-            // Сбрасываем все индикаторы
             document.querySelectorAll('.sort-indicator').forEach(indicator => {
                 indicator.textContent = '';
             });
             
-            // Устанавливаем индикатор для текущего поля
             const indicator = document.getElementById(`sort-${currentSort.field}`);
             if (indicator) {
                 indicator.textContent = currentSort.direction === 'asc' ? '▲' : '▼';
@@ -697,6 +681,8 @@
 
         // Показать форму редактирования
         function showEditForm() {
+            if (!isAdmin) return;
+            
             const playerSelect = document.getElementById('edit-player');
             const editForm = document.getElementById('edit-form');
             selectedPlayerId = parseInt(playerSelect.value);
@@ -717,7 +703,7 @@
 
         // Сохранение изменений игрока
         function savePlayerEdit() {
-            if (!selectedPlayerId) return;
+            if (!isAdmin || !selectedPlayerId) return;
             
             const player = players.find(p => p.id === selectedPlayerId);
             if (player) {
@@ -726,7 +712,6 @@
                 const losses = parseInt(document.getElementById('edit-losses').value) || 0;
                 const points = parseInt(document.getElementById('edit-points').value) || 0;
                 
-                // Проверка корректности данных
                 if (wins + losses > games) {
                     alert('Количество побед и поражений не может превышать количество игр');
                     return;
@@ -785,7 +770,6 @@
             const player1 = players.find(p => p.id === player1Id);
             const player2 = players.find(p => p.id === player2Id);
             
-            // Обновляем статистику игроков
             player1.games++;
             player2.games++;
             
@@ -801,7 +785,6 @@
                 player1.points += 1;
             }
             
-            // Сбрасываем форму
             player1Select.value = '';
             player2Select.value = '';
             winnerSelect.value = '';
@@ -809,14 +792,11 @@
             saveDataToFirebase();
             updateTable();
             updatePlayerSelects();
-            
-            // Показываем уведомление об успехе
             showNotification('Матч успешно зарегистрирован!');
         }
 
         // Показать уведомление
         function showNotification(message) {
-            // Создаем элемент уведомления
             const notification = document.createElement('div');
             notification.style.cssText = `
                 position: fixed;
@@ -834,7 +814,6 @@
             
             document.body.appendChild(notification);
             
-            // Удаляем уведомление через 3 секунды
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease';
                 setTimeout(() => {
@@ -861,7 +840,6 @@
         function updateTable() {
             const tableBody = document.getElementById('table-body');
             
-            // Фильтрация игроков по поиску
             let filteredPlayers = players.filter(player => {
                 if (currentSearch && !player.name.toLowerCase().includes(currentSearch)) {
                     return false;
@@ -869,7 +847,6 @@
                 return true;
             });
             
-            // Сортируем игроков по выбранному полю
             filteredPlayers = filteredPlayers.sort((a, b) => {
                 let aValue, bValue;
                 
@@ -896,10 +873,8 @@
                         break;
                     case 'rank':
                     default:
-                        // По умолчанию сортируем по очкам (рейтинг)
                         aValue = a.points;
                         bValue = b.points;
-                        // При равенстве очков сортируем по победам
                         if (aValue === bValue) {
                             aValue = a.wins;
                             bValue = b.wins;
@@ -924,10 +899,8 @@
             filteredPlayers.forEach((player, index) => {
                 const row = document.createElement('tr');
                 
-                // Определяем место в рейтинге (только если сортировка по очкам)
                 let rank = index + 1;
                 if (currentSort.field !== 'points' && currentSort.field !== 'rank') {
-                    // Если сортировка не по рейтингу, вычисляем фактическое место
                     const sortedByPoints = [...filteredPlayers].sort((a, b) => {
                         if (b.points !== a.points) return b.points - a.points;
                         return b.wins - a.wins;
@@ -935,7 +908,6 @@
                     rank = sortedByPoints.findIndex(p => p.id === player.id) + 1;
                 }
                 
-                // Добавляем классы для первых трех мест
                 if (rank === 1) row.classList.add('rank-1');
                 if (rank === 2) row.classList.add('rank-2');
                 if (rank === 3) row.classList.add('rank-3');
@@ -964,20 +936,19 @@
             const player2Select = document.getElementById('player2');
             const editPlayerSelect = document.getElementById('edit-player');
             
-            // Сохраняем текущие значения
             const currentPlayer1 = player1Select.value;
             const currentPlayer2 = player2Select.value;
             const currentEditPlayer = editPlayerSelect.value;
             
-            // Очищаем списки
             player1Select.innerHTML = '<option value="">Выберите игрока 1</option>';
             player2Select.innerHTML = '<option value="">Выберите игрока 2</option>';
-            editPlayerSelect.innerHTML = '<option value="">Выберите игрока для редактирования</option>';
             
-            // Сортируем игроков по алфавиту для списков
+            if (isAdmin) {
+                editPlayerSelect.innerHTML = '<option value="">Выберите игрока для редактирования</option>';
+            }
+            
             const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
             
-            // Заполняем списки всеми игроками
             sortedPlayers.forEach(player => {
                 const option1 = document.createElement('option');
                 option1.value = player.id;
@@ -989,20 +960,22 @@
                 option2.textContent = player.name;
                 player2Select.appendChild(option2);
                 
-                const optionEdit = document.createElement('option');
-                optionEdit.value = player.id;
-                optionEdit.textContent = player.name;
-                editPlayerSelect.appendChild(optionEdit);
+                if (isAdmin) {
+                    const optionEdit = document.createElement('option');
+                    optionEdit.value = player.id;
+                    optionEdit.textContent = player.name;
+                    editPlayerSelect.appendChild(optionEdit);
+                }
             });
             
-            // Восстанавливаем выбранные значения
             player1Select.value = currentPlayer1;
             player2Select.value = currentPlayer2;
-            editPlayerSelect.value = currentEditPlayer;
             
-            // Обновляем форму редактирования, если игрок выбран
-            if (currentEditPlayer) {
-                showEditForm();
+            if (isAdmin) {
+                editPlayerSelect.value = currentEditPlayer;
+                if (currentEditPlayer) {
+                    showEditForm();
+                }
             }
         }
 
@@ -1022,11 +995,10 @@
 
         // Ждем загрузки Firebase перед загрузкой данных
         window.addEventListener('DOMContentLoaded', (event) => {
-            // Даем время на инициализацию Firebase
             setTimeout(() => {
                 if (window.database) {
                     loadData();
-                    updateSortIndicators(); // Устанавливаем начальные индикаторы сортировки
+                    updateSortIndicators();
                 } else {
                     console.error('Firebase не инициализирован');
                     showSyncStatus('❌ Ошибка инициализации Firebase', true);
