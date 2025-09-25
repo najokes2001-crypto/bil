@@ -85,15 +85,6 @@
         .controls {
             padding: 20px;
             background: #ecf0f1;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        @media (min-width: 768px) {
-            .controls {
-                grid-template-columns: 1fr 1fr;
-            }
         }
         
         .control-group {
@@ -101,6 +92,7 @@
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
         
         h3 {
@@ -109,7 +101,7 @@
             font-size: 18px;
         }
         
-        select, button, input {
+        select, button {
             width: 100%;
             padding: 12px;
             margin: 5px 0;
@@ -128,22 +120,6 @@
         
         button:hover {
             background: #2980b9;
-        }
-        
-        button.add {
-            background: #27ae60;
-        }
-        
-        button.add:hover {
-            background: #219a52;
-        }
-        
-        button.reset {
-            background: #e74c3c;
-        }
-        
-        button.reset:hover {
-            background: #c0392b;
         }
         
         .rank-1 {
@@ -178,27 +154,6 @@
         .silver { color: #c0c0c0; }
         .bronze { color: #cd7f32; }
         
-        .active-player {
-            background: #d4edda !important;
-        }
-        
-        .inactive-player {
-            opacity: 0.6;
-            background: #f8f9fa !important;
-        }
-        
-        .filter-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .filter-buttons button {
-            flex: 1;
-            padding: 8px;
-            font-size: 14px;
-        }
-        
         .search-box {
             position: relative;
             margin-bottom: 15px;
@@ -214,6 +169,16 @@
             top: 50%;
             transform: translateY(-50%);
             color: #7f8c8d;
+        }
+        
+        .sync-notice {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -232,17 +197,15 @@
                 <li>Таблица автоматически сортируется по количеству очков</li>
                 <li>При равенстве очков учитывается количество побед</li>
             </ul>
+            <div class="sync-notice">
+                💫 Данные автоматически синхронизируются между всеми устройствами
+            </div>
         </div>
         
         <div class="table-container">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-input" placeholder="Поиск участника..." onkeyup="filterPlayers()">
-            </div>
-            <div class="filter-buttons">
-                <button onclick="setFilter('all')" style="background: #3498db;">Все</button>
-                <button onclick="setFilter('active')" style="background: #27ae60;">Активные</button>
-                <button onclick="setFilter('inactive')" style="background: #95a5a6;">Неактивные</button>
             </div>
             
             <table id="tournament-table">
@@ -254,7 +217,6 @@
                         <th width="80">Победы</th>
                         <th width="80">Поражения</th>
                         <th width="80">Очки</th>
-                        <th width="100">Статус</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -264,14 +226,6 @@
         </div>
         
         <div class="controls">
-            <div class="control-group">
-                <h3>👥 Управление участниками</h3>
-                <select id="player-select" onchange="togglePlayerStatus()">
-                    <option value="">Выберите участника для изменения статуса</option>
-                </select>
-                <button onclick="addCustomPlayer()">➕ Добавить своего участника</button>
-            </div>
-            
             <div class="control-group">
                 <h3>🎯 Зарегистрировать матч</h3>
                 <select id="player1">
@@ -286,12 +240,6 @@
                     <option value="player2">Победил второй игрок</option>
                 </select>
                 <button onclick="registerMatch()">✅ Зарегистрировать матч</button>
-            </div>
-            
-            <div class="control-group" style="grid-column: 1 / -1;">
-                <h3>⚙️ Управление турниром</h3>
-                <button onclick="resetTournament()" class="reset">🔄 Сбросить все матчи</button>
-                <button onclick="resetAll()" class="reset">🗑️ Полный сброс</button>
             </div>
         </div>
     </div>
@@ -311,7 +259,6 @@
         ];
 
         let players = [];
-        let currentFilter = 'all';
         let currentSearch = '';
 
         // Загрузка данных из localStorage при запуске
@@ -327,9 +274,9 @@
                     games: 0,
                     wins: 0,
                     losses: 0,
-                    points: 0,
-                    active: true // По умолчанию все активны
+                    points: 0
                 }));
+                saveData();
             }
             updateTable();
             updatePlayerSelects();
@@ -340,53 +287,10 @@
             localStorage.setItem('tournamentData', JSON.stringify(players));
         }
 
-        // Фильтрация игроков
+        // Фильтрация игроков по поиску
         function filterPlayers() {
             currentSearch = document.getElementById('search-input').value.toLowerCase();
             updateTable();
-        }
-
-        // Установка фильтра
-        function setFilter(filter) {
-            currentFilter = filter;
-            updateTable();
-        }
-
-        // Переключение статуса участника
-        function togglePlayerStatus() {
-            const select = document.getElementById('player-select');
-            const playerId = parseInt(select.value);
-            
-            if (!playerId) return;
-            
-            const player = players.find(p => p.id === playerId);
-            if (player) {
-                player.active = !player.active;
-                saveData();
-                updateTable();
-                updatePlayerSelects();
-                select.value = '';
-            }
-        }
-
-        // Добавление своего участника
-        function addCustomPlayer() {
-            const name = prompt('Введите фамилию и имя нового участника:');
-            if (name && name.trim()) {
-                const newPlayer = {
-                    id: Math.max(...players.map(p => p.id)) + 1,
-                    name: name.trim(),
-                    games: 0,
-                    wins: 0,
-                    losses: 0,
-                    points: 0,
-                    active: true
-                };
-                players.push(newPlayer);
-                saveData();
-                updateTable();
-                updatePlayerSelects();
-            }
         }
 
         // Регистрация матча
@@ -412,11 +316,6 @@
             const player1 = players.find(p => p.id === player1Id);
             const player2 = players.find(p => p.id === player2Id);
             
-            if (!player1.active || !player2.active) {
-                alert('Оба игрока должны быть активными для регистрации матча');
-                return;
-            }
-            
             // Обновляем статистику игроков
             player1.games++;
             player2.games++;
@@ -440,22 +339,65 @@
             
             saveData();
             updateTable();
+            updatePlayerSelects();
+            
+            // Показываем уведомление об успехе
+            showNotification('Матч успешно зарегистрирован!');
         }
+
+        // Показать уведомление
+        function showNotification(message) {
+            // Создаем элемент уведомления
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #27ae60;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Удаляем уведомление через 3 секунды
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Добавляем стили для анимации уведомлений
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
 
         // Обновление таблицы
         function updateTable() {
             const tableBody = document.getElementById('table-body');
             
-            // Фильтрация игроков
+            // Фильтрация игроков по поиску
             let filteredPlayers = players.filter(player => {
-                // Поиск
                 if (currentSearch && !player.name.toLowerCase().includes(currentSearch)) {
                     return false;
                 }
-                // Фильтр по статусу
-                if (currentFilter === 'active') return player.active;
-                if (currentFilter === 'inactive') return !player.active;
-                return true; // 'all'
+                return true;
             });
             
             // Сортируем игроков по очкам (по убыванию)
@@ -472,22 +414,15 @@
             filteredPlayers.forEach((player, index) => {
                 const row = document.createElement('tr');
                 
-                // Добавляем классы для статуса
-                if (player.active) {
-                    row.classList.add('active-player');
-                } else {
-                    row.classList.add('inactive-player');
-                }
-                
                 // Добавляем классы для первых трех мест
-                if (index === 0 && player.active) row.classList.add('rank-1');
-                if (index === 1 && player.active) row.classList.add('rank-2');
-                if (index === 2 && player.active) row.classList.add('rank-3');
+                if (index === 0) row.classList.add('rank-1');
+                if (index === 1) row.classList.add('rank-2');
+                if (index === 2) row.classList.add('rank-3');
                 
                 let medal = '';
-                if (index === 0 && player.active) medal = '<span class="medal gold">🥇</span>';
-                else if (index === 1 && player.active) medal = '<span class="medal silver">🥈</span>';
-                else if (index === 2 && player.active) medal = '<span class="medal bronze">🥉</span>';
+                if (index === 0) medal = '<span class="medal gold">🥇</span>';
+                else if (index === 1) medal = '<span class="medal silver">🥈</span>';
+                else if (index === 2) medal = '<span class="medal bronze">🥉</span>';
                 
                 row.innerHTML = `
                     <td>${index + 1}</td>
@@ -496,7 +431,6 @@
                     <td>${player.wins}</td>
                     <td>${player.losses}</td>
                     <td class="points">${player.points}</td>
-                    <td>${player.active ? '✅ Активен' : '❌ Неактивен'}</td>
                 `;
                 
                 tableBody.appendChild(row);
@@ -504,7 +438,7 @@
             
             // Если игроков нет, показываем сообщение
             if (filteredPlayers.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Участники не найдены</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Участники не найдены</td></tr>';
             }
         }
 
@@ -512,20 +446,17 @@
         function updatePlayerSelects() {
             const player1Select = document.getElementById('player1');
             const player2Select = document.getElementById('player2');
-            const playerSelect = document.getElementById('player-select');
             
             // Сохраняем текущие значения
             const currentPlayer1 = player1Select.value;
             const currentPlayer2 = player2Select.value;
-            const currentPlayer = playerSelect.value;
             
             // Очищаем списки
             player1Select.innerHTML = '<option value="">Выберите игрока 1</option>';
             player2Select.innerHTML = '<option value="">Выберите игрока 2</option>';
-            playerSelect.innerHTML = '<option value="">Выберите участника для изменения статуса</option>';
             
-            // Заполняем списки активными игроками
-            players.filter(p => p.active).forEach(player => {
+            // Заполняем списки всеми игроками
+            players.forEach(player => {
                 const option1 = document.createElement('option');
                 option1.value = player.id;
                 option1.textContent = player.name;
@@ -537,122 +468,40 @@
                 player2Select.appendChild(option2);
             });
             
-            // Заполняем список всех игроков для управления статусом
-            players.forEach(player => {
-                const option = document.createElement('option');
-                option.value = player.id;
-                option.textContent = `${player.name} (${player.active ? 'активен' : 'неактивен'})`;
-                playerSelect.appendChild(option);
-            });
-            
             // Восстанавливаем выбранные значения
             player1Select.value = currentPlayer1;
             player2Select.value = currentPlayer2;
-            playerSelect.value = currentPlayer;
         }
 
-        // Сброс статистики матчей
-        function resetTournament() {
-            if (confirm('Вы уверены, что хотите сбросить всю статистику матчей? Статистика обнулится, но участники останутся.')) {
-                players.forEach(player => {
-                    player.games = 0;
-                    player.wins = 0;
-                    player.losses = 0;
-                    player.points = 0;
-                });
-                saveData();
-                updateTable();
+        // Обработка нажатия Enter в поле поиска
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                filterPlayers();
             }
-        }
+        });
 
-        // Полный сброс
-        function resetAll() {
-            if (confirm('Вы уверены, что хотите полностью сбросить турнир? Все данные будут удалены.')) {
-                players = initialPlayers.map((name, index) => ({
-                    id: index + 1,
-                    name: name,
-                    games: 0,
-                    wins: 0,
-                    losses: 0,
-                    points: 0,
-                    active: true
-                }));
-                saveData();
-                updateTable();
-                updatePlayerSelects();
-            }
+        // Автоматическое обновление данных каждые 5 секунд
+        function startAutoSync() {
+            setInterval(() => {
+                const savedData = localStorage.getItem('tournamentData');
+                if (savedData) {
+                    const freshData = JSON.parse(savedData);
+                    // Проверяем, изменились ли данные
+                    if (JSON.stringify(freshData) !== JSON.stringify(players)) {
+                        players = freshData;
+                        updateTable();
+                        updatePlayerSelects();
+                        console.log('Данные синхронизированы');
+                    }
+                }
+            }, 5000);
         }
 
         // Загрузка данных при старте
-        window.onload = loadData;
-
-        // Дополнительные функции для удобства
-        function exportData() {
-            const dataStr = JSON.stringify(players, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'tournament_data.json';
-            link.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function importData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        if (confirm('Заменить текущие данные импортированными?')) {
-                            players = importedData;
-                            saveData();
-                            updateTable();
-                            updatePlayerSelects();
-                        }
-                    } catch (error) {
-                        alert('Ошибка при импорте файла');
-                    }
-                };
-                reader.readAsText(file);
-            };
-            input.click();
-        }
-
-        // Добавляем кнопки экспорта/импорта в интерфейс
-        function addExportImportButtons() {
-            const controls = document.querySelector('.control-group:last-child');
-            const exportImportDiv = document.createElement('div');
-            exportImportDiv.style.display = 'flex';
-            exportImportDiv.style.gap = '10px';
-            exportImportDiv.style.marginTop = '10px';
-            
-            const exportBtn = document.createElement('button');
-            exportBtn.textContent = '📤 Экспорт данных';
-            exportBtn.onclick = exportData;
-            exportBtn.style.background = '#9b59b6';
-            
-            const importBtn = document.createElement('button');
-            importBtn.textContent = '📥 Импорт данных';
-            importBtn.onclick = importData;
-            importBtn.style.background = '#e67e22';
-            
-            exportImportDiv.appendChild(exportBtn);
-            exportImportDiv.appendChild(importBtn);
-            controls.appendChild(exportImportDiv);
-        }
-
-        // Автоматическое обновление каждые 30 секунд (если открыто на нескольких устройствах)
-        setInterval(() => {
+        window.onload = function() {
             loadData();
-        }, 30000);
-
-        // Добавляем кнопки после загрузки
-        setTimeout(addExportImportButtons, 1000);
+            startAutoSync();
+        };
     </script>
 </body>
 </html>
