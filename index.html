@@ -4,6 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Турнирная таблица - Мини-бильярд</title>
+    
+    <!-- Добавьте Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrSNE5Irp7On5PQfiKIKWtWsmrhnhwet4",
+            authDomain: "billll-29d2e.firebaseapp.com",
+            databaseURL: "https://billll-29d2e-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "billll-29d2e",
+            storageBucket: "billll-29d2e.firebasestorage.app",
+            messagingSenderId: "120025375875",
+            appId: "1:120025375875:web:eb2b736a3119b432abe7b6"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Сделаем database глобальной переменной для использования в других функциях
+        window.database = database;
+        window.dbRef = ref;
+        window.dbOnValue = onValue;
+        window.dbSet = set;
+    </script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -171,7 +200,7 @@
             color: #7f8c8d;
         }
         
-        .sync-notice {
+        .sync-status {
             background: #d4edda;
             color: #155724;
             padding: 10px;
@@ -179,6 +208,18 @@
             margin: 10px 0;
             text-align: center;
             font-size: 14px;
+            display: none;
+        }
+        
+        .sync-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
         }
     </style>
 </head>
@@ -197,8 +238,8 @@
                 <li>Таблица автоматически сортируется по количеству очков</li>
                 <li>При равенстве очков учитывается количество побед</li>
             </ul>
-            <div class="sync-notice">
-                💫 Данные автоматически синхронизируются между всеми устройствами
+            <div id="sync-status" class="sync-status">
+                <!-- Статус синхронизации будет отображаться здесь -->
             </div>
         </div>
         
@@ -220,7 +261,9 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Данные будут добавляться здесь -->
+                    <tr>
+                        <td colspan="6" class="loading">Загрузка данных...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -240,6 +283,12 @@
                     <option value="player2">Победил второй игрок</option>
                 </select>
                 <button onclick="registerMatch()">✅ Зарегистрировать матч</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🔄 Управление данными</h3>
+                <button onclick="resetData()">🔄 Сбросить к начальным данным</button>
+                <button onclick="exportData()">📥 Экспорт данных</button>
             </div>
         </div>
     </div>
@@ -261,13 +310,85 @@
         let players = [];
         let currentSearch = '';
 
-        // Загрузка данных из localStorage при запуске
-        function loadData() {
-            const savedData = localStorage.getItem('tournamentData');
-            if (savedData) {
-                players = JSON.parse(savedData);
+        // Функция для отображения статуса синхронизации
+        function showSyncStatus(message, isError = false) {
+            const statusElement = document.getElementById('sync-status');
+            statusElement.textContent = message;
+            statusElement.style.display = 'block';
+            
+            if (isError) {
+                statusElement.classList.add('error');
             } else {
-                // Инициализация предзаполненными участниками
+                statusElement.classList.remove('error');
+            }
+            
+            // Автоматически скрыть через 3 секунды, если это не ошибка
+            if (!isError) {
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Загрузка данных из Firebase
+        function loadData() {
+            const playersRef = window.dbRef(window.database, 'players');
+            
+            window.dbOnValue(playersRef, (snapshot) => {
+                const data = snapshot.val();
+                
+                if (data) {
+                    // Преобразуем объект в массив
+                    players = Object.values(data);
+                    // Восстанавливаем порядок по ID
+                    players.sort((a, b) => a.id - b.id);
+                    showSyncStatus('✅ Данные загружены из облака');
+                } else {
+                    // Инициализация предзаполненными участниками, если данных нет в Firebase
+                    players = initialPlayers.map((name, index) => ({
+                        id: index + 1,
+                        name: name,
+                        games: 0,
+                        wins: 0,
+                        losses: 0,
+                        points: 0
+                    }));
+                    saveDataToFirebase();
+                    showSyncStatus('✅ Созданы начальные данные');
+                }
+                
+                updateTable();
+                updatePlayerSelects();
+            }, (error) => {
+                console.error('Ошибка загрузки данных:', error);
+                showSyncStatus('❌ Ошибка загрузки данных', true);
+            });
+        }
+
+        // Сохранение данных в Firebase
+        function saveDataToFirebase() {
+            // Преобразуем массив в объект с ключами по ID для Firebase
+            const playersObject = {};
+            players.forEach(player => {
+                playersObject[player.id] = player;
+            });
+            
+            const playersRef = window.dbRef(window.database, 'players');
+            
+            window.dbSet(playersRef, playersObject)
+                .then(() => {
+                    console.log('Данные сохранены в Firebase');
+                    showSyncStatus('✅ Данные сохранены в облако');
+                })
+                .catch((error) => {
+                    console.error('Ошибка сохранения данных:', error);
+                    showSyncStatus('❌ Ошибка сохранения данных', true);
+                });
+        }
+
+        // Сброс данных к начальным
+        function resetData() {
+            if (confirm('Вы уверены, что хотите сбросить все данные к начальным? Все текущие результаты будут удалены.')) {
                 players = initialPlayers.map((name, index) => ({
                     id: index + 1,
                     name: name,
@@ -276,15 +397,22 @@
                     losses: 0,
                     points: 0
                 }));
-                saveData();
+                saveDataToFirebase();
+                showNotification('Данные сброшены к начальным');
             }
-            updateTable();
-            updatePlayerSelects();
         }
 
-        // Сохранение данных в localStorage
-        function saveData() {
-            localStorage.setItem('tournamentData', JSON.stringify(players));
+        // Экспорт данных
+        function exportData() {
+            const dataStr = JSON.stringify(players, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = 'tournament-data.json';
+            link.click();
+            
+            showNotification('Данные экспортированы');
         }
 
         // Фильтрация игроков по поиску
@@ -337,7 +465,7 @@
             player2Select.value = '';
             winnerSelect.value = '';
             
-            saveData();
+            saveDataToFirebase();
             updateTable();
             updatePlayerSelects();
             
@@ -411,6 +539,11 @@
             
             tableBody.innerHTML = '';
             
+            if (filteredPlayers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Участники не найдены</td></tr>';
+                return;
+            }
+            
             filteredPlayers.forEach((player, index) => {
                 const row = document.createElement('tr');
                 
@@ -435,11 +568,6 @@
                 
                 tableBody.appendChild(row);
             });
-            
-            // Если игроков нет, показываем сообщение
-            if (filteredPlayers.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Участники не найдены</td></tr>';
-            }
         }
 
         // Обновление выпадающих списков игроков
@@ -480,28 +608,18 @@
             }
         });
 
-        // Автоматическое обновление данных каждые 5 секунд
-        function startAutoSync() {
-            setInterval(() => {
-                const savedData = localStorage.getItem('tournamentData');
-                if (savedData) {
-                    const freshData = JSON.parse(savedData);
-                    // Проверяем, изменились ли данные
-                    if (JSON.stringify(freshData) !== JSON.stringify(players)) {
-                        players = freshData;
-                        updateTable();
-                        updatePlayerSelects();
-                        console.log('Данные синхронизированы');
-                    }
+        // Ждем загрузки Firebase перед загрузкой данных
+        window.addEventListener('DOMContentLoaded', (event) => {
+            // Даем время на инициализацию Firebase
+            setTimeout(() => {
+                if (window.database) {
+                    loadData();
+                } else {
+                    console.error('Firebase не инициализирован');
+                    showSyncStatus('❌ Ошибка инициализации Firebase', true);
                 }
-            }, 5000);
-        }
-
-        // Загрузка данных при старте
-        window.onload = function() {
-            loadData();
-            startAutoSync();
-        };
+            }, 1000);
+        });
     </script>
 </body>
 </html>
