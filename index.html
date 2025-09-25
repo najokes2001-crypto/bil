@@ -96,6 +96,16 @@
             font-weight: bold;
             position: sticky;
             top: 0;
+            cursor: pointer;
+        }
+        
+        th:hover {
+            background: #2c3e50;
+        }
+        
+        .sort-indicator {
+            margin-left: 5px;
+            font-size: 12px;
         }
         
         td {
@@ -114,6 +124,15 @@
         .controls {
             padding: 20px;
             background: #ecf0f1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
         }
         
         .control-group {
@@ -121,7 +140,6 @@
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
         }
         
         h3 {
@@ -130,7 +148,7 @@
             font-size: 18px;
         }
         
-        select, button {
+        select, button, input {
             width: 100%;
             padding: 12px;
             margin: 5px 0;
@@ -149,6 +167,22 @@
         
         button:hover {
             background: #2980b9;
+        }
+        
+        button.secondary {
+            background: #95a5a6;
+        }
+        
+        button.secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        button.danger {
+            background: #e74c3c;
+        }
+        
+        button.danger:hover {
+            background: #c0392b;
         }
         
         .rank-1 {
@@ -221,6 +255,59 @@
             padding: 20px;
             color: #666;
         }
+        
+        .edit-form {
+            display: none;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .form-actions button {
+            flex: 1;
+        }
+        
+        .player-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .player-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        
+        .player-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .player-item:last-child {
+            border-bottom: none;
+        }
+        
+        .player-item.selected {
+            background: #3498db;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -252,12 +339,12 @@
             <table id="tournament-table">
                 <thead>
                     <tr>
-                        <th width="50">Место</th>
-                        <th>Участник</th>
-                        <th width="80">Игры</th>
-                        <th width="80">Победы</th>
-                        <th width="80">Поражения</th>
-                        <th width="80">Очки</th>
+                        <th width="50" onclick="sortTable('rank')">Место <span class="sort-indicator" id="sort-rank">▼</span></th>
+                        <th onclick="sortTable('name')">Участник <span class="sort-indicator" id="sort-name"></span></th>
+                        <th width="80" onclick="sortTable('games')">Игры <span class="sort-indicator" id="sort-games"></span></th>
+                        <th width="80" onclick="sortTable('wins')">Победы <span class="sort-indicator" id="sort-wins"></span></th>
+                        <th width="80" onclick="sortTable('losses')">Поражения <span class="sort-indicator" id="sort-losses"></span></th>
+                        <th width="80" onclick="sortTable('points')">Очки <span class="sort-indicator" id="sort-points">▼</span></th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -286,29 +373,63 @@
             </div>
             
             <div class="control-group">
-                <h3>🔄 Управление данными</h3>
-                <button onclick="resetData()">🔄 Сбросить к начальным данным</button>
-                <button onclick="exportData()">📥 Экспорт данных</button>
+                <h3>✏️ Исправление данных</h3>
+                <select id="edit-player" onchange="showEditForm()">
+                    <option value="">Выберите игрока для редактирования</option>
+                </select>
+                
+                <div id="edit-form" class="edit-form">
+                    <div class="form-row">
+                        <div>
+                            <label>Игры:</label>
+                            <input type="number" id="edit-games" min="0">
+                        </div>
+                        <div>
+                            <label>Победы:</label>
+                            <input type="number" id="edit-wins" min="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div>
+                            <label>Поражения:</label>
+                            <input type="number" id="edit-losses" min="0">
+                        </div>
+                        <div>
+                            <label>Очки:</label>
+                            <input type="number" id="edit-points" min="0">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button onclick="savePlayerEdit()">💾 Сохранить</button>
+                        <button class="secondary" onclick="cancelEdit()">❌ Отмена</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <button class="danger" onclick="resetData()">🔄 Сбросить все данные</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Предзаполненные участники
+        // Предзаполненные участники (отсортированные по алфавиту)
         const initialPlayers = [
-            "Бывшева Анастасия", "Рогов Дмитрий", "Бывшева Наталья", "Бывшев Григорий", 
-            "Бывшев Виктор", "Рогов Алексей", "Данилова Ольга", "Рогова Наталья", 
-            "Барток Ольга", "Рогов Роман", "Рогова Лилия", "Мухтаров Даниил", 
-            "Мухтаров Илья", "Мухтарова Наталья", "Новоселов Даниил", "Романова Антонина", 
-            "Соколов Дмитрий", "Соколова Алена", "Кириченко Илья", "Уткин Дмитрий", 
-            "Уткина Мария", "Сорокина Анастасия", "Мягких Влад", "Карпова Любовь", 
-            "Славнова Любовь", "Пузиков Роман", "Бобкова Светлана", "Шигаева Анастасия", 
-            "Карандашева Анастасия", "Ускова Анна", "Бекезин Ярослав", "Беляков Иван", 
-            "Фёдоров Илья", "Захарикова Любовь", "Жёлудева Марина", "Мухтаров Эдгар"
-        ];
+            "Барток Ольга", "Бекезин Ярослав", "Беляков Иван", "Бобкова Светлана",
+            "Бывшев Виктор", "Бывшев Григорий", "Бывшева Анастасия", "Бывшева Наталья",
+            "Данилова Ольга", "Жёлудева Марина", "Захарикова Любовь", "Карандашева Анастасия",
+            "Карпова Любовь", "Кириченко Илья", "Мягких Влад", "Мухтаров Даниил",
+            "Мухтаров Илья", "Мухтаров Эдгар", "Мухтарова Наталья", "Новоселов Даниил",
+            "Пузиков Роман", "Рогов Алексей", "Рогов Дмитрий", "Рогов Роман",
+            "Рогова Лилия", "Рогова Наталья", "Романова Антонина", "Славнова Любовь",
+            "Соколов Дмитрий", "Соколова Алена", "Сорокина Анастасия", "Уткин Дмитрий",
+            "Уткина Мария", "Ускова Анна", "Фёдоров Илья", "Шигаева Анастасия"
+        ].sort(); // Сортируем по алфавиту
 
         let players = [];
         let currentSearch = '';
+        let currentSort = { field: 'points', direction: 'desc' };
+        let selectedPlayerId = null;
 
         // Функция для отображения статуса синхронизации
         function showSyncStatus(message, isError = false) {
@@ -386,9 +507,40 @@
                 });
         }
 
+        // Сортировка таблицы
+        function sortTable(field) {
+            // Если поле уже отсортировано, меняем направление
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc'; // По умолчанию сортируем по возрастанию
+            }
+            
+            // Обновляем индикаторы сортировки
+            updateSortIndicators();
+            
+            // Обновляем таблицу
+            updateTable();
+        }
+
+        // Обновление индикаторов сортировки
+        function updateSortIndicators() {
+            // Сбрасываем все индикаторы
+            document.querySelectorAll('.sort-indicator').forEach(indicator => {
+                indicator.textContent = '';
+            });
+            
+            // Устанавливаем индикатор для текущего поля
+            const indicator = document.getElementById(`sort-${currentSort.field}`);
+            if (indicator) {
+                indicator.textContent = currentSort.direction === 'asc' ? '▲' : '▼';
+            }
+        }
+
         // Сброс данных к начальным
         function resetData() {
-            if (confirm('Вы уверены, что хотите сбросить все данные к начальным? Все текущие результаты будут удалены.')) {
+            if (confirm('Вы уверены, что хотите сбросить все данные? Все текущие результаты будут удалены.')) {
                 players = initialPlayers.map((name, index) => ({
                     id: index + 1,
                     name: name,
@@ -398,21 +550,70 @@
                     points: 0
                 }));
                 saveDataToFirebase();
+                cancelEdit();
                 showNotification('Данные сброшены к начальным');
             }
         }
 
-        // Экспорт данных
-        function exportData() {
-            const dataStr = JSON.stringify(players, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        // Показать форму редактирования
+        function showEditForm() {
+            const playerSelect = document.getElementById('edit-player');
+            const editForm = document.getElementById('edit-form');
+            selectedPlayerId = parseInt(playerSelect.value);
             
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = 'tournament-data.json';
-            link.click();
+            if (selectedPlayerId) {
+                const player = players.find(p => p.id === selectedPlayerId);
+                if (player) {
+                    document.getElementById('edit-games').value = player.games;
+                    document.getElementById('edit-wins').value = player.wins;
+                    document.getElementById('edit-losses').value = player.losses;
+                    document.getElementById('edit-points').value = player.points;
+                    editForm.style.display = 'block';
+                }
+            } else {
+                editForm.style.display = 'none';
+            }
+        }
+
+        // Сохранение изменений игрока
+        function savePlayerEdit() {
+            if (!selectedPlayerId) return;
             
-            showNotification('Данные экспортированы');
+            const player = players.find(p => p.id === selectedPlayerId);
+            if (player) {
+                const games = parseInt(document.getElementById('edit-games').value) || 0;
+                const wins = parseInt(document.getElementById('edit-wins').value) || 0;
+                const losses = parseInt(document.getElementById('edit-losses').value) || 0;
+                const points = parseInt(document.getElementById('edit-points').value) || 0;
+                
+                // Проверка корректности данных
+                if (wins + losses > games) {
+                    alert('Количество побед и поражений не может превышать количество игр');
+                    return;
+                }
+                
+                if (wins > games || losses > games) {
+                    alert('Количество побед или поражений не может превышать количество игр');
+                    return;
+                }
+                
+                player.games = games;
+                player.wins = wins;
+                player.losses = losses;
+                player.points = points;
+                
+                saveDataToFirebase();
+                updateTable();
+                cancelEdit();
+                showNotification('Данные игрока обновлены');
+            }
+        }
+
+        // Отмена редактирования
+        function cancelEdit() {
+            document.getElementById('edit-player').value = '';
+            document.getElementById('edit-form').style.display = 'none';
+            selectedPlayerId = null;
         }
 
         // Фильтрация игроков по поиску
@@ -528,13 +729,49 @@
                 return true;
             });
             
-            // Сортируем игроков по очкам (по убыванию)
+            // Сортируем игроков по выбранному полю
             filteredPlayers = filteredPlayers.sort((a, b) => {
-                if (b.points !== a.points) {
-                    return b.points - a.points;
+                let aValue, bValue;
+                
+                switch (currentSort.field) {
+                    case 'name':
+                        aValue = a.name.toLowerCase();
+                        bValue = b.name.toLowerCase();
+                        break;
+                    case 'games':
+                        aValue = a.games;
+                        bValue = b.games;
+                        break;
+                    case 'wins':
+                        aValue = a.wins;
+                        bValue = b.wins;
+                        break;
+                    case 'losses':
+                        aValue = a.losses;
+                        bValue = b.losses;
+                        break;
+                    case 'points':
+                        aValue = a.points;
+                        bValue = b.points;
+                        break;
+                    case 'rank':
+                    default:
+                        // По умолчанию сортируем по очкам (рейтинг)
+                        aValue = a.points;
+                        bValue = b.points;
+                        // При равенстве очков сортируем по победам
+                        if (aValue === bValue) {
+                            aValue = a.wins;
+                            bValue = b.wins;
+                        }
+                        break;
                 }
-                // При равенстве очков сортируем по победам
-                return b.wins - a.wins;
+                
+                if (currentSort.direction === 'asc') {
+                    return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+                } else {
+                    return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+                }
             });
             
             tableBody.innerHTML = '';
@@ -547,18 +784,29 @@
             filteredPlayers.forEach((player, index) => {
                 const row = document.createElement('tr');
                 
+                // Определяем место в рейтинге (только если сортировка по очкам)
+                let rank = index + 1;
+                if (currentSort.field !== 'points' && currentSort.field !== 'rank') {
+                    // Если сортировка не по рейтингу, вычисляем фактическое место
+                    const sortedByPoints = [...filteredPlayers].sort((a, b) => {
+                        if (b.points !== a.points) return b.points - a.points;
+                        return b.wins - a.wins;
+                    });
+                    rank = sortedByPoints.findIndex(p => p.id === player.id) + 1;
+                }
+                
                 // Добавляем классы для первых трех мест
-                if (index === 0) row.classList.add('rank-1');
-                if (index === 1) row.classList.add('rank-2');
-                if (index === 2) row.classList.add('rank-3');
+                if (rank === 1) row.classList.add('rank-1');
+                if (rank === 2) row.classList.add('rank-2');
+                if (rank === 3) row.classList.add('rank-3');
                 
                 let medal = '';
-                if (index === 0) medal = '<span class="medal gold">🥇</span>';
-                else if (index === 1) medal = '<span class="medal silver">🥈</span>';
-                else if (index === 2) medal = '<span class="medal bronze">🥉</span>';
+                if (rank === 1) medal = '<span class="medal gold">🥇</span>';
+                else if (rank === 2) medal = '<span class="medal silver">🥈</span>';
+                else if (rank === 3) medal = '<span class="medal bronze">🥉</span>';
                 
                 row.innerHTML = `
-                    <td>${index + 1}</td>
+                    <td>${rank}</td>
                     <td><div class="player-name">${medal} ${player.name}</div></td>
                     <td>${player.games}</td>
                     <td>${player.wins}</td>
@@ -574,17 +822,23 @@
         function updatePlayerSelects() {
             const player1Select = document.getElementById('player1');
             const player2Select = document.getElementById('player2');
+            const editPlayerSelect = document.getElementById('edit-player');
             
             // Сохраняем текущие значения
             const currentPlayer1 = player1Select.value;
             const currentPlayer2 = player2Select.value;
+            const currentEditPlayer = editPlayerSelect.value;
             
             // Очищаем списки
             player1Select.innerHTML = '<option value="">Выберите игрока 1</option>';
             player2Select.innerHTML = '<option value="">Выберите игрока 2</option>';
+            editPlayerSelect.innerHTML = '<option value="">Выберите игрока для редактирования</option>';
+            
+            // Сортируем игроков по алфавиту для списков
+            const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
             
             // Заполняем списки всеми игроками
-            players.forEach(player => {
+            sortedPlayers.forEach(player => {
                 const option1 = document.createElement('option');
                 option1.value = player.id;
                 option1.textContent = player.name;
@@ -594,11 +848,22 @@
                 option2.value = player.id;
                 option2.textContent = player.name;
                 player2Select.appendChild(option2);
+                
+                const optionEdit = document.createElement('option');
+                optionEdit.value = player.id;
+                optionEdit.textContent = player.name;
+                editPlayerSelect.appendChild(optionEdit);
             });
             
             // Восстанавливаем выбранные значения
             player1Select.value = currentPlayer1;
             player2Select.value = currentPlayer2;
+            editPlayerSelect.value = currentEditPlayer;
+            
+            // Обновляем форму редактирования, если игрок выбран
+            if (currentEditPlayer) {
+                showEditForm();
+            }
         }
 
         // Обработка нажатия Enter в поле поиска
@@ -614,6 +879,7 @@
             setTimeout(() => {
                 if (window.database) {
                     loadData();
+                    updateSortIndicators(); // Устанавливаем начальные индикаторы сортировки
                 } else {
                     console.error('Firebase не инициализирован');
                     showSyncStatus('❌ Ошибка инициализации Firebase', true);
