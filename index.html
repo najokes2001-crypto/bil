@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Турнирная таблица - Мини-бильярд</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .rules {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            padding: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        th {
+            background: #34495e;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: #e8f4f8;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #ecf0f1;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        @media (min-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .control-group {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button.add {
+            background: #27ae60;
+        }
+        
+        button.add:hover {
+            background: #219a52;
+        }
+        
+        button.reset {
+            background: #e74c3c;
+        }
+        
+        button.reset:hover {
+            background: #c0392b;
+        }
+        
+        .rank-1 {
+            background: #fff9c4 !important;
+            font-weight: bold;
+        }
+        
+        .rank-2 {
+            background: #f5f5f5 !important;
+        }
+        
+        .rank-3 {
+            background: #ffecb3 !important;
+        }
+        
+        .points {
+            font-weight: bold;
+            color: #e91e63;
+        }
+        
+        .player-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .medal {
+            font-size: 18px;
+        }
+        
+        .gold { color: #ffd700; }
+        .silver { color: #c0c0c0; }
+        .bronze { color: #cd7f32; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏆 Турнирная таблица - Мини-бильярд</h1>
+            <p>Система подсчета очков: Победа = 2 очка, Поражение = 1 очко</p>
+        </header>
+        
+        <div class="rules">
+            <strong>Правила турнира:</strong>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>За победу в матче игрок получает <strong>2 очка</strong></li>
+                <li>За поражение в матче игрок получает <strong>1 очко</strong></li>
+                <li>Таблица автоматически сортируется по количеству очков</li>
+                <li>При равенстве очков учитывается количество побед</li>
+            </ul>
+        </div>
+        
+        <div class="table-container">
+            <table id="tournament-table">
+                <thead>
+                    <tr>
+                        <th width="50">Место</th>
+                        <th>Участник</th>
+                        <th width="80">Игры</th>
+                        <th width="80">Победы</th>
+                        <th width="80">Поражения</th>
+                        <th width="80">Очки</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Данные будут добавляться здесь -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>📝 Добавить участника</h3>
+                <input type="text" id="new-player-name" placeholder="Фамилия и имя" style="padding: 12px; width: 100%; margin-bottom: 10px; border: 1px solid #bdc3c7; border-radius: 5px; font-size: 16px;">
+                <button class="add" onclick="addPlayer()">➕ Добавить участника</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎯 Зарегистрировать матч</h3>
+                <select id="player1">
+                    <option value="">Выберите игрока 1</option>
+                </select>
+                <select id="player2">
+                    <option value="">Выберите игрока 2</option>
+                </select>
+                <select id="winner">
+                    <option value="">Выберите победителя</option>
+                    <option value="player1">Победил первый игрок</option>
+                    <option value="player2">Победил второй игрок</option>
+                </select>
+                <button onclick="registerMatch()">✅ Зарегистрировать матч</button>
+            </div>
+            
+            <div class="control-group" style="grid-column: 1 / -1;">
+                <h3>⚙️ Управление турниром</h3>
+                <button onclick="resetTournament()" class="reset">🔄 Сбросить турнир</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация данных турнира
+        let players = [];
+        
+        // Загрузка данных из localStorage при запуске
+        function loadData() {
+            const savedData = localStorage.getItem('tournamentData');
+            if (savedData) {
+                players = JSON.parse(savedData);
+            }
+            updateTable();
+            updatePlayerSelects();
+        }
+        
+        // Сохранение данных в localStorage
+        function saveData() {
+            localStorage.setItem('tournamentData', JSON.stringify(players));
+        }
+        
+        // Добавление нового игрока
+        function addPlayer() {
+            const nameInput = document.getElementById('new-player-name');
+            const name = nameInput.value.trim();
+            
+            if (name === '') {
+                alert('Введите имя участника');
+                return;
+            }
+            
+            // Проверка на дубликат
+            if (players.find(player => player.name.toLowerCase() === name.toLowerCase())) {
+                alert('Участник с таким именем уже существует');
+                return;
+            }
+            
+            players.push({
+                id: Date.now(),
+                name: name,
+                games: 0,
+                wins: 0,
+                losses: 0,
+                points: 0
+            });
+            
+            nameInput.value = '';
+            saveData();
+            updateTable();
+            updatePlayerSelects();
+        }
+        
+        // Регистрация матча
+        function registerMatch() {
+            const player1Select = document.getElementById('player1');
+            const player2Select = document.getElementById('player2');
+            const winnerSelect = document.getElementById('winner');
+            
+            const player1Id = parseInt(player1Select.value);
+            const player2Id = parseInt(player2Select.value);
+            const winner = winnerSelect.value;
+            
+            if (!player1Id || !player2Id || !winner) {
+                alert('Заполните все поля для регистрации матча');
+                return;
+            }
+            
+            if (player1Id === player2Id) {
+                alert('Игрок не может играть против себя');
+                return;
+            }
+            
+            const player1 = players.find(p => p.id === player1Id);
+            const player2 = players.find(p => p.id === player2Id);
+            
+            // Обновляем статистику игроков
+            player1.games++;
+            player2.games++;
+            
+            if (winner === 'player1') {
+                player1.wins++;
+                player2.losses++;
+                player1.points += 2;
+                player2.points += 1;
+            } else {
+                player2.wins++;
+                player1.losses++;
+                player2.points += 2;
+                player1.points += 1;
+            }
+            
+            // Сбрасываем форму
+            player1Select.value = '';
+            player2Select.value = '';
+            winnerSelect.value = '';
+            
+            saveData();
+            updateTable();
+        }
+        
+        // Обновление таблицы
+        function updateTable() {
+            const tableBody = document.getElementById('table-body');
+            
+            // Сортируем игроков по очкам (по убыванию)
+            const sortedPlayers = [...players].sort((a, b) => {
+                if (b.points !== a.points) {
+                    return b.points - a.points;
+                }
+                // При равенстве очков сортируем по победам
+                return b.wins - a.wins;
+            });
+            
+            tableBody.innerHTML = '';
+            
+            sortedPlayers.forEach((player, index) => {
+                const row = document.createElement('tr');
+                
+                // Добавляем классы для первых трех мест
+                if (index === 0) row.classList.add('rank-1');
+                if (index === 1) row.classList.add('rank-2');
+                if (index === 2) row.classList.add('rank-3');
+                
+                let medal = '';
+                if (index === 0) medal = '<span class="medal gold">🥇</span>';
+                else if (index === 1) medal = '<span class="medal silver">🥈</span>';
+                else if (index === 2) medal = '<span class="medal bronze">🥉</span>';
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><div class="player-name">${medal} ${player.name}</div></td>
+                    <td>${player.games}</td>
+                    <td>${player.wins}</td>
+                    <td>${player.losses}</td>
+                    <td class="points">${player.points}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Если игроков нет, показываем сообщение
+            if (players.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">Нет участников. Добавьте первого участника!</td></tr>';
+            }
+        }
+        
+        // Обновление выпадающих списков игроков
+        function updatePlayerSelects() {
+            const player1Select = document.getElementById('player1');
+            const player2Select = document.getElementById('player2');
+            const winnerSelect = document.getElementById('winner');
+            
+            // Сохраняем текущие значения
+            const currentPlayer1 = player1Select.value;
+            const currentPlayer2 = player2Select.value;
+            const currentWinner = winnerSelect.value;
+            
+            // Очищаем списки
+            player1Select.innerHTML = '<option value="">Выберите игрока 1</option>';
+            player2Select.innerHTML = '<option value="">Выберите игрока 2</option>';
+            
+            // Заполняем списки игроками
+            players.forEach(player => {
+                const option1 = document.createElement('option');
+                option1.value = player.id;
+                option1.textContent = player.name;
+                player1Select.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = player.id;
+                option2.textContent = player.name;
+                player2Select.appendChild(option2);
+            });
+            
+            // Восстанавливаем выбранные значения
+            player1Select.value = currentPlayer1;
+            player2Select.value = currentPlayer2;
+            winnerSelect.value = currentWinner;
+        }
+        
+        // Сброс турнира
+        function resetTournament() {
+            if (confirm('Вы уверены, что хотите сбросить весь турнир? Все данные будут удалены.')) {
+                players = [];
+                saveData();
+                updateTable();
+                updatePlayerSelects();
+            }
+        }
+        
+        // Обработка нажатия Enter в поле ввода имени
+        document.getElementById('new-player-name').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addPlayer();
+            }
+        });
+        
+        // Загрузка данных при старте
+        window.onload = loadData;
+    </script>
+</body>
+</html>
